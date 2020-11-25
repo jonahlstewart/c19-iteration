@@ -52,7 +52,7 @@ sqlController.insertUser = async (req, res, next) => {
 sqlController.deleteUser = (req, res, next) => {
   const { username } = req.body;
 
-  const deleteUserString = `DELETE FROM users WHERE username = ${username}`;
+  const deleteUserString = `DELETE FROM users WHERE username = '${username}'`;
 
   db.query(deleteUserString);
 
@@ -60,8 +60,10 @@ sqlController.deleteUser = (req, res, next) => {
 };
 
 sqlController.logAssessment = (req, res, next) => {
+  if (!req.user) return next();
   // remember to acct for: location, positive rates, user_id
   const { activities, zipcode } = req.body;
+  const { _id } = req.user;
   const today = new Date().toLocaleDateString();
   // [mail, groceries] >> 'mail, groceries' >> true, true
 
@@ -69,19 +71,22 @@ sqlController.logAssessment = (req, res, next) => {
   const activitiesValues = activities.map((activity) => true).join(', ');
 
   // create a session
-  const createSessionString = `INSERT INTO assessments(_id, ${activitesString}, ${today}, ${zipcode}, ${user_id}) values(default, ${activitiesValues}, date, zipcode, user_id)`; // remember to change pos_rate and loc_id
+  const createSessionString = `INSERT INTO assessments(_id, ${activitesString}, date, zipcode, user_id) values(default, ${activitiesValues}, ${today}, ${zipcode}, ${_id})`; // remember to change pos_rate and loc_id
 
   db.query(createSessionString);
+  return next();
 };
 
 sqlController.findAllAssements = (req, res, next) => {
-  const user_id = req.body; // unsure if this data will actually be in req.body
+  //get profile from database using the username
+  // const { username } = req.params;
+  const { _id } = req.user; // unsure if this data will actually be in req.body
 
-  const findAllString = `SELECT * FROM assessments WHERE user_id = ${user_id}`;
+  const findAllString = `SELECT * FROM assessments WHERE user_id = ${_id}`;
 
   const assessments = db.query(findAllString);
 
-  res.locals.assessments = assessments;
+  res.locals.assessments = assessments.rows[0];
 
   return next();
 };
